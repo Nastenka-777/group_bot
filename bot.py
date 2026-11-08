@@ -23,8 +23,8 @@ STUDENTS = [
     "Шустов Матвей", "Юстимчук Анастасия",
 ]
 
-REASONS = ["По болезни", "По заявлению", "По повестке", "По приказу",
-           "Без уважительной причины"]
+REASONS = ["По болезни 🤒", "По заявлению ✍🏻", "По повестке 👨🏽", "По приказу 💼",
+           "Без уважительной причины 🤷🏽‍♀️"]
 MAX_DAYS = 90  # максимальная длина периода отметки
 
 def load(name, default):
@@ -135,7 +135,7 @@ async def cancel(cb: CallbackQuery, state: FSMContext):
 async def start(m: Message, state: FSMContext):
     await state.clear()
     if is_admin(m.from_user.id):
-        await m.answer("Привет, староста! 👑\n"
+        await m.answer("Привет, староста! 💅🏻 \n"
                        "Одногруппники отмечаются сами, все отметки прилетают тебе.",
                        reply_markup=admin_menu())
         return
@@ -150,7 +150,7 @@ async def start(m: Message, state: FSMContext):
                        "попроси старосту сбросить привязку («🔗 Привязки»).")
         return
     await state.set_state(Bind.student)
-    await m.answer("Привет! 👋 Один раз найди себя в списке — "
+    await m.answer("📌 Привет! Один раз найди себя в списке — "
                    "этот аккаунт будет закреплён за тобой:",
                    reply_markup=pick_student_free(free))
 
@@ -158,7 +158,7 @@ async def start(m: Message, state: FSMContext):
 async def do_bind(cb: CallbackQuery, state: FSMContext):
     name = STUDENTS[int(cb.data.split(":")[1])]
     if name in BINDINGS.values():
-        await cb.message.edit_text("Эта фамилия уже занята другим аккаунтом. "
+        await cb.message.edit_text("Эта фамилия уже занята другим аккаунтом. ❌🙅🏽"
                                    "Если это ты — попроси старосту сбросить привязку.")
         await state.clear()
         await cb.answer()
@@ -180,17 +180,17 @@ async def do_bind(cb: CallbackQuery, state: FSMContext):
 async def mark(m: Message, state: FSMContext):
     name = name_of(m.from_user.id)
     if not name:
-        await m.answer("Сначала привяжи аккаунт: отправь /start и найди себя в списке.")
+        await m.answer("📌 Сначала привяжи аккаунт: отправь /start и найди себя в списке.")
         return
     t = today()
     ahead = [d for d, data in ABSENT.items() if name in data and dkey(d) >= dkey(t)]
     if ahead:
-        await m.answer(f"Ты уже отмечен(а) до {max(ahead, key=dkey)}.\n"
-                       "Если срок изменился — сначала нажми «Отменить отметку», потом отметься заново.")
+        await m.answer(f"✋🏼 Ты уже отмечен(а) до {max(ahead, key=dkey)}.\n"
+                       "Если срок изменился ✏️ — сначала нажми «❌ Отменить отметку», потом отметься заново.")
         return
     await state.update_data(name=name)
     await state.set_state(Mark.reason)
-    await m.answer(f"{name}, причина отсутствия?", reply_markup=pick_reason())
+    await m.answer(f"{name}, причина отсутствия ? 🔍", reply_markup=pick_reason())
 
 @dp.callback_query(Mark.reason, F.data.startswith("rs:"))
 async def ask_period(cb: CallbackQuery, state: FSMContext):
@@ -198,7 +198,7 @@ async def ask_period(cb: CallbackQuery, state: FSMContext):
     await state.update_data(reason=reason)
     await state.set_state(Mark.period)
     await cb.message.edit_text(
-        f"Причина: {reason}.\n\nНа сколько дней отметиться?\n"
+        f"Причина: {reason}.\n\nНа сколько дней отметиться?🔍\n"
         "Напиши период в формате 06.11.2026 - 12.11.2026 (через дефис)\n"
         "или отправь 0 — если только на сегодня.")
     await cb.answer()
@@ -209,7 +209,7 @@ async def save_period(m: Message, state: FSMContext):
     name, reason = data["name"], data["reason"]
     period = parse_period(m.text)
     if not period:
-        await m.answer("Не поняла даты 🤔 Формат: 06.11.2026 - 12.11.2026 (через дефис) "
+        await m.answer("Не поняла даты ❓❌ Формат: 06.11.2026 - 12.11.2026 (через дефис) "
                         "или 0 — если только на сегодня. Попробуй ещё раз:")
         return
     start, end = period
@@ -227,7 +227,7 @@ async def save_period(m: Message, state: FSMContext):
     else:
         text = (f"✅ {name} — {reason}.\n"
                 f"Период: с {start} по {end} ({len(days)} дн.).")
-    await m.answer(text + "\nЕсли выздоровеешь раньше — нажми «Отменить отметку».")
+    await m.answer(text + "\nЕсли выздоровеешь раньше — нажми «❌ Отменить отметку».")
     try:
         await bot.send_message(ADMIN_ID, f"🆕 {text}\n(отметился: {m.from_user.full_name})")
     except Exception:
@@ -238,13 +238,13 @@ async def save_period(m: Message, state: FSMContext):
 async def unmark(m: Message):
     name = name_of(m.from_user.id)
     if not name:
-        await m.answer("Сначала привяжи аккаунт: отправь /start.")
+        await m.answer("Сначала привяжи аккаунт ✍🏻: отправь /start.")
         return
     t = today()
     ahead = sorted((d for d, data in ABSENT.items() if name in data and dkey(d) >= dkey(t)),
                    key=dkey)
     if not ahead:
-        await m.answer("Ты сейчас не отмечен(а) 🤔")
+        await m.answer("Ты сейчас не отмечен(а) 🙅🏽")
         return
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="Только сегодня", callback_data="un:today"),
@@ -255,7 +255,7 @@ async def unmark(m: Message):
 async def do_unmark(cb: CallbackQuery):
     name = name_of(cb.from_user.id)
     if not name:
-        await cb.answer("Сначала привяжи аккаунт через /start", show_alert=True)
+        await cb.answer("✍🏻 Сначала привяжи аккаунт через /start", show_alert=True)
         return
     mode = cb.data.split(":")[1]
     t = today()
@@ -273,23 +273,23 @@ async def do_unmark(cb: CallbackQuery):
                 del ABSENT[d]
     save("absent.json", ABSENT)
     await cb.message.edit_text(
-        f"✅ Сняла отметок: {removed}. {name} снова в строю!")
+        f"✅ Сняла отметок: {removed}. {name} снова присутствует.")
     await cb.answer()
     if removed:
         try:
             await bot.send_message(ADMIN_ID,
-                f"↩️ {name} отменил(а) {removed} дн. отметок, начиная с {t}.")
+                f"🔄 {name} отменил(а) {removed} дн. отметок, начиная с {t}.")
         except Exception:
             pass
 
 # ---------- староста ----------
 def vedomost(day):
     data = ABSENT.get(day, {})
-    lines = [f"📋 ВЕДОМОСТЬ, группа 98ТП — {day}",
+    lines = [f"📋👫 ВЕДОМОСТЬ , группа 9️⃣8️⃣ТП — {day}",
              f"Всего учащихся: {len(STUDENTS)}",
              f"Отсутствуют: {len(data)} чел.", ""]
     if not data:
-        lines.append("Отсутствующих нет 🎉")
+        lines.append("Отсутствующих нет ❌💻")
     for i, (name, reason) in enumerate(data.items(), 1):
         lines.append(f"{i}. {name} — {reason}")
     return "\n".join(lines)
@@ -309,7 +309,7 @@ async def future_marks(m: Message):
             people = ", ".join(f"{n} ({r})" for n, r in ABSENT[d].items())
             lines.append(f"{d}: {people}")
     if not found:
-        lines.append("Пока никто не отметился на будущее 🙂")
+        lines.append("Пока никто не отметился на будущее ✋🏼")
     await m.answer("\n".join(lines))
 
 @dp.message(F.text == "📊 Статистика за месяц")
@@ -327,7 +327,7 @@ async def stats(m: Message):
         if c:
             lines.append(f"{name} — {c} раз(а)")
     if all(c == 0 for _, c in rows):
-        lines.append("Пока что пусто 🙂")
+        lines.append("Пока что пусто 🌪")
     await m.answer("\n".join(lines))
 
 @dp.message(F.text == "🔗 Привязки")
@@ -340,7 +340,7 @@ async def bindings_list(m: Message, state: FSMContext):
     free = [s for s in STUDENTS if s not in BINDINGS.values()]
     if free:
         lines.append("")
-        lines.append("Ещё не привязались: " + ", ".join(free))
+        lines.append("Ещё не привязались ❓❌: " + ", ".join(free))
     await m.answer("\n".join(lines))
     bound = [s for s in STUDENTS if s in BINDINGS.values()]
     if bound:
@@ -355,7 +355,7 @@ async def do_unbind(cb: CallbackQuery, state: FSMContext):
         BINDINGS.pop(k)
     save("bindings.json", BINDINGS)
     await state.clear()
-    await cb.message.edit_text(f"🔓 {name} отвязан(а). Пусть зайдёт в бота и привяжется заново через /start.")
+    await cb.message.edit_text(f"🔓 {name} отвязан(а). ❌ Пусть зайдёт в бота и привяжется заново через /start.")
     await cb.answer()
 
 async def main():
