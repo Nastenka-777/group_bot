@@ -27,6 +27,7 @@ REASONS = ["По болезни 🤒", "По заявлению ✍🏻", "По 
            "Без уважительной причины 🤷🏽‍♀️"]
 MAX_DAYS = 90  # максимальная длина периода отметки
 
+
 def load(name, default):
     try:
         with open(name, encoding="utf-8") as f:
@@ -34,25 +35,31 @@ def load(name, default):
     except (FileNotFoundError, json.JSONDecodeError):
         return default
 
+
 def save(name, data):
     with open(name, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
+
 ABSENT = load("absent.json", {})      # дата -> {фамилия: причина}
 BINDINGS = load("bindings.json", {})  # "id аккаунта" -> фамилия
+
 
 def today():
     return datetime.now().strftime("%d.%m.%Y")
 
+
 def dkey(s):
     """Превращает '05.12.2026' в настоящую дату, чтобы сравнивать правильно."""
     return datetime.strptime(s, "%d.%m.%Y")
+
 
 def parse_date(s):
     try:
         return datetime.strptime(s.strip(), "%d.%m.%Y").strftime("%d.%m.%Y")
     except ValueError:
         return None
+
 
 def parse_period(text):
     """'06.11.2026 - 12.11.2026' или '0' (только сегодня)."""
@@ -68,6 +75,7 @@ def parse_period(text):
         return None
     return start, end
 
+
 def days_between(start, end):
     d0, d1 = dkey(start), dkey(end)
     out, cur = [], d0
@@ -76,17 +84,21 @@ def days_between(start, end):
         cur += timedelta(days=1)
     return out
 
+
 def is_admin(user_id):
     return user_id == ADMIN_ID
 
+
 def name_of(user_id):
     return BINDINGS.get(str(user_id))
+
 
 def student_menu():
     return ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text="🙋 Отметиться"),
                    KeyboardButton(text="❌ Отменить отметку")]],
         resize_keyboard=True)
+
 
 def admin_menu():
     return ReplyKeyboardMarkup(
@@ -95,6 +107,7 @@ def admin_menu():
                   [KeyboardButton(text="📊 Статистика за месяц"),
                    KeyboardButton(text="🔗 Привязки")]],
         resize_keyboard=True)
+
 
 def pick_student_free(free):
     kb, row = [], []
@@ -107,28 +120,37 @@ def pick_student_free(free):
     kb.append([InlineKeyboardButton(text="❌ Отмена", callback_data="cancel")])
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
+
 def pick_reason():
+    # callback_data — только номер причины, текст не влезает в лимит 64 байта
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=r, callback_data=f"rs:{r}")] for r in REASONS])
+        [InlineKeyboardButton(text=r, callback_data=f"rs:{i}")]
+        for i, r in enumerate(REASONS)])
+
 
 class Bind(StatesGroup):
     student = State()
+
 
 class Mark(StatesGroup):
     reason = State()
     period = State()
 
+
 class Unbind(StatesGroup):
     student = State()
 
+
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
+
 
 @dp.callback_query(F.data == "cancel")
 async def cancel(cb: CallbackQuery, state: FSMContext):
     await state.clear()
     await cb.message.edit_text("Отменено.")
     await cb.answer()
+
 
 # ---------- привязка при первом запуске ----------
 @dp.message(CommandStart())
@@ -154,11 +176,12 @@ async def start(m: Message, state: FSMContext):
                    "этот аккаунт будет закреплён за тобой:",
                    reply_markup=pick_student_free(free))
 
+
 @dp.callback_query(Bind.student, F.data.startswith("bd:"))
 async def do_bind(cb: CallbackQuery, state: FSMContext):
     name = STUDENTS[int(cb.data.split(":")[1])]
     if name in BINDINGS.values():
-        await cb.message.edit_text("Эта фамилия уже занята другим аккаунтом. ❌🙅🏽"
+        await cb.message.edit_text("Эта фамилия уже занята другим аккаунтом. ❌🙅🏽 "
                                    "Если это ты — попроси старосту сбросить привязку.")
         await state.clear()
         await cb.answer()
@@ -166,14 +189,15 @@ async def do_bind(cb: CallbackQuery, state: FSMContext):
     BINDINGS[str(cb.from_user.id)] = name
     save("bindings.json", BINDINGS)
     await state.clear()
-    await cb.message.edit_text(
-        f"✅ Готово! Теперь этот аккаунт — {name}.",
-        reply_markup=student_menu())
+    # edit_text не принимает reply-клавиатуру — меню отправляем отдельным сообщением
+    await cb.message.edit_text(f"✅ Готово! Теперь этот аккаунт — {name}.")
+    await cb.message.answer("Что дальше?", reply_markup=student_menu())
     await cb.answer()
     try:
         await bot.send_message(ADMIN_ID, f"🔗 Новая привязка: {cb.from_user.full_name} → {name}")
     except Exception:
         pass
+
 
 # ---------- студенты: отметка ----------
 @dp.message(F.text == "🙋 Отметиться")
@@ -186,22 +210,25 @@ async def mark(m: Message, state: FSMContext):
     ahead = [d for d, data in ABSENT.items() if name in data and dkey(d) >= dkey(t)]
     if ahead:
         await m.answer(f"✋🏼 Ты уже отмечен(а) до {max(ahead, key=dkey)}.\n"
-                       "Если срок изменился ✏️ — сначала нажми «❌ Отменить отметку», потом отметься заново.")
+                       "Если срок изменился ✏️ — сначала нажми «❌ Отменить отметку», "
+                       "потом отметься заново.")
         return
     await state.update_data(name=name)
     await state.set_state(Mark.reason)
-    await m.answer(f"{name}, причина отсутствия ? 🔍", reply_markup=pick_reason())
+    await m.answer(f"{name}, причина отсутствия? 🔍", reply_markup=pick_reason())
+
 
 @dp.callback_query(Mark.reason, F.data.startswith("rs:"))
 async def ask_period(cb: CallbackQuery, state: FSMContext):
-    reason = cb.data.split(":", 1)[1]
+    reason = REASONS[int(cb.data.split(":", 1)[1])]
     await state.update_data(reason=reason)
     await state.set_state(Mark.period)
     await cb.message.edit_text(
-        f"Причина: {reason}.\n\nНа сколько дней отметиться?🔍\n"
+        f"Причина: {reason}.\n\nНа сколько дней отметиться? 🔍\n"
         "Напиши период в формате 06.11.2026 - 12.11.2026 (через дефис)\n"
         "или отправь 0 — если только на сегодня.")
     await cb.answer()
+
 
 @dp.message(Mark.period)
 async def save_period(m: Message, state: FSMContext):
@@ -210,7 +237,7 @@ async def save_period(m: Message, state: FSMContext):
     period = parse_period(m.text)
     if not period:
         await m.answer("Не поняла даты ❓❌ Формат: 06.11.2026 - 12.11.2026 (через дефис) "
-                        "или 0 — если только на сегодня. Попробуй ещё раз:")
+                       "или 0 — если только на сегодня. Попробуй ещё раз:")
         return
     start, end = period
     if (dkey(end) - dkey(start)).days + 1 > MAX_DAYS:
@@ -233,6 +260,7 @@ async def save_period(m: Message, state: FSMContext):
     except Exception:
         pass
 
+
 # ---------- студенты: отмена ----------
 @dp.message(F.text == "❌ Отменить отметку")
 async def unmark(m: Message):
@@ -250,6 +278,7 @@ async def unmark(m: Message):
         [InlineKeyboardButton(text="Только сегодня", callback_data="un:today"),
          InlineKeyboardButton(text="Весь период", callback_data="un:all")]])
     await m.answer(f"Ты отмечен(а) до {ahead[-1]}.\nЧто отменить?", reply_markup=kb)
+
 
 @dp.callback_query(F.data.startswith("un:"))
 async def do_unmark(cb: CallbackQuery):
@@ -278,14 +307,15 @@ async def do_unmark(cb: CallbackQuery):
     if removed:
         try:
             await bot.send_message(ADMIN_ID,
-                f"🔄 {name} отменил(а) {removed} дн. отметок, начиная с {t}.")
+                                   f"🔄 {name} отменил(а) {removed} дн. отметок, начиная с {t}.")
         except Exception:
             pass
+
 
 # ---------- староста ----------
 def vedomost(day):
     data = ABSENT.get(day, {})
-    lines = [f"📋👫 ВЕДОМОСТЬ , группа 9️⃣8️⃣ТП — {day}",
+    lines = [f"📋👫 ВЕДОМОСТЬ, группа 9️⃣8️⃣ТП — {day}",
              f"Всего учащихся: {len(STUDENTS)}",
              f"Отсутствуют: {len(data)} чел.", ""]
     if not data:
@@ -294,9 +324,11 @@ def vedomost(day):
         lines.append(f"{i}. {name} — {reason}")
     return "\n".join(lines)
 
+
 @dp.message(F.text == "📋 Ведомость за сегодня")
 async def vedomost_today(m: Message):
     await m.answer(vedomost(today()))
+
 
 @dp.message(F.text == "🗓 Будущие отметки")
 async def future_marks(m: Message):
@@ -311,6 +343,7 @@ async def future_marks(m: Message):
     if not found:
         lines.append("Пока никто не отметился на будущее ✋🏼")
     await m.answer("\n".join(lines))
+
 
 @dp.message(F.text == "📊 Статистика за месяц")
 async def stats(m: Message):
@@ -330,6 +363,7 @@ async def stats(m: Message):
         lines.append("Пока что пусто 🌪")
     await m.answer("\n".join(lines))
 
+
 @dp.message(F.text == "🔗 Привязки")
 async def bindings_list(m: Message, state: FSMContext):
     if not is_admin(m.from_user.id):
@@ -348,6 +382,7 @@ async def bindings_list(m: Message, state: FSMContext):
         await m.answer("Кого отвязать? (если человек сменил аккаунт):",
                        reply_markup=pick_student_free(bound))
 
+
 @dp.callback_query(Unbind.student, F.data.startswith("bd:"))
 async def do_unbind(cb: CallbackQuery, state: FSMContext):
     name = STUDENTS[int(cb.data.split(":")[1])]
@@ -355,11 +390,14 @@ async def do_unbind(cb: CallbackQuery, state: FSMContext):
         BINDINGS.pop(k)
     save("bindings.json", BINDINGS)
     await state.clear()
-    await cb.message.edit_text(f"🔓 {name} отвязан(а). ❌ Пусть зайдёт в бота и привяжется заново через /start.")
+    await cb.message.edit_text(
+        f"🔓 {name} отвязан(а). ❌ Пусть зайдёт в бота и привяжется заново через /start.")
     await cb.answer()
+
 
 async def main():
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
+
 
 asyncio.run(main())
