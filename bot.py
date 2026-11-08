@@ -9,7 +9,7 @@ from aiogram.types import (CallbackQuery, InlineKeyboardButton,
                            InlineKeyboardMarkup, KeyboardButton,
                            Message, ReplyKeyboardMarkup)
 
-TOKEN = os.environ["BOT_TOKEN"]
+TOKEN = os.environ.get("TELEGRAM_TOKEN") or os.environ["BOT_TOKEN"]
 ADMIN_ID = 5132006984
 
 STUDENTS = [
