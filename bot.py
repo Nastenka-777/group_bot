@@ -1,4 +1,4 @@
-import asyncio, json
+import asyncio, json, os
 from datetime import datetime, timedelta
 
 from aiogram import Bot, Dispatcher, F
@@ -9,7 +9,7 @@ from aiogram.types import (CallbackQuery, InlineKeyboardButton,
                            InlineKeyboardMarkup, KeyboardButton,
                            Message, ReplyKeyboardMarkup)
 
-TOKEN = "9103418650:AAHt8Z3oY4Q4t7wEjxa-D56ApFq136pyD2w"
+TOKEN = os.environ["BOT_TOKEN"]
 ADMIN_ID = 5132006984
 
 STUDENTS = [
